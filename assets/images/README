@@ -1,0 +1,32 @@
+
+This directory contains pre-rendered PNG images for chess pieces at
+various useful resolutions, as well as source SVG files.
+
+Images exist for both light and dark backgrounds; for example, "BQL"
+and "BQD" mean "Black Queen, Light" and "Black Queen, Dark"
+respectively.
+
+The source for all these files was the Merida TrueType font, released
+as freeware in 1998 by Armando Hernandez Marroquin.
+
+The individual SVG files were created manually from the original
+TrueType font using fontforge.
+
+The SVG files were then processed into PNG files using inkscape in
+command-line mode; for example:
+
+    inkscape \
+        --without-gui \
+        --file BQD.svg \
+        --export-png BQD.128.png \
+        --export-width 128 \
+        --export-height 128
+
+Or, using terse options:
+
+    inkscape -z -f BQD.svg -e BQD.128.png -w 128 -h 128
+
+Note that inkscape does uses antialiasing when converting, which means
+that the .png files are somewhat larger than they could be, but look
+nicer as a result.
+
