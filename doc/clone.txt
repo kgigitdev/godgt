@@ -1,0 +1,31 @@
+Notes to self about cloning afresh over ssh on a new computer (because
+I keep forgetting the magic):
+
+1. Ensure that ~/.ssh/github_rsa is in position (or whatever credentials
+   are in use);
+   
+2. Ensure your ~/.ssh/config has a stanza like this:
+
+    Host            github.com
+        Hostname        ssh.github.com
+        IdentityFile    ~/.ssh/github_rsa
+        IdentitiesOnly yes
+        Port 443
+
+3. Clone the repo:
+
+    mkdir -p ${GOPATH}/src/github.com/kgigitdev
+    cd ${GOPATH}/src/github.com/kgigitdev
+    git clone git@github.com:kgigitdev/godgt.git
+
+4. Configure the repo if you want settings other than the global git settings:
+
+    git config --local user.name "Joe Bloggs"
+    git config --local user.email jbloggs@example.com
+
+5. Check the settings:
+
+    git config --list
+
+   (Note that later values take precedence over earlier values).
+
