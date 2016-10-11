@@ -573,8 +573,10 @@ func (mp *MessageProcessor) IsMovePseudoLegal() bool {
 		log.Println("Switching player ...")
 		if mp.Board.SideToMove == chess.White {
 			mp.Board.SideToMove = chess.Black
+			log.Println("Black to move.")
 		} else {
 			mp.Board.SideToMove = chess.White
+			log.Println("White to move.")
 		}
 	}
 
