@@ -16,7 +16,7 @@ var opts struct {
 
 	Size int `short:"s" long:"size" description:"Image size" default:"128"`
 
-	Filename string `short:"f" long:"filename" default:"boardupdate"`
+	Filename string `short:"f" long:"filename" description:"File prefix for png image files" default:"boardupdate"`
 }
 
 func main() {
