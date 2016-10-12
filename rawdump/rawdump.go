@@ -49,13 +49,22 @@ func main() {
 	for {
 		select {
 		case message := <-dgtboard.MessagesFromBoard:
-			messageCount += 1
+			messageCount++
 			writeMessage(message)
 			if opts.Pngs && message.BoardUpdate != nil {
 				filename := fmt.Sprintf("%s-%04d.png",
 					opts.Filename, messageCount)
 				fen := message.BoardUpdate.ToString()
 				godgt.WritePng(fen, opts.Size, filename)
+				// Hack: always make a copy of the
+				// latest image to known, constant
+				// name; this makes it possible to
+				// view it without having to work out
+				// the latest image.
+				latest := fmt.Sprintf("%s-latest.png",
+					opts.Filename)
+				godgt.CopyFile(filename, latest)
+
 			}
 			if message.FieldUpdate != nil {
 				dgtboard.WriteCommand(godgt.DGT_SEND_BRD)

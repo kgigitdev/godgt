@@ -11,15 +11,6 @@ import (
 	"os"
 )
 
-func WritePng(fen string, size int, filename string) {
-	w, err := os.Create(filename)
-	if err != nil {
-		log.Fatal("Failed to open file for writing.")
-	}
-	defer w.Close()
-	WriteBoardAsPng(fen, size, w)
-}
-
 func GetFigurineName(fenChar string) string {
 	// JUST for pieces; we deal with other stuff later,
 	// including empty squares and stuff.
@@ -83,6 +74,15 @@ func GetImagePath(fenChar string, iCol int, iRow int, size int) string {
 		return ""
 	}
 	return fmt.Sprintf("/assets/images/%d/%s.png", size, imageName)
+}
+
+func WritePng(fen string, size int, filename string) {
+	w, err := os.Create(filename)
+	if err != nil {
+		log.Fatal("Failed to open file for writing.")
+	}
+	defer w.Close()
+	WriteBoardAsPng(fen, size, w)
 }
 
 func WriteBoardAsPng(fen string, size int, w io.Writer) {
