@@ -46,12 +46,14 @@ func GetFigurineName(fenChar string) string {
 
 func GetImageName(fenChar string, iCol int, iRow int) string {
 	var squareColour string
+	// iRow is 0-indexed from the *top* and *left*, and the top
+	// left square (that is, a8) is light.
 	if (iCol+iRow)%2 == 0 {
-		// Dark
-		squareColour = "D"
-	} else {
 		// Light
 		squareColour = "L"
+	} else {
+		// Dark
+		squareColour = "D"
 	}
 	figurineName := GetFigurineName(fenChar)
 	if figurineName == "" {
