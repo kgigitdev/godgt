@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -19,20 +20,19 @@ import (
 // lower level things like a PGN reader and a UCI interface to an
 // engine)
 type GameRater struct {
-	opts             Opts
-	pgnFileHandle    *os.File
-	outputFileHandle *os.File
-	pgntext          string
-	db               pgn.DB
-	game             *pgn.Game
-	engine           *uci.Engine
-	engineOptions    map[string]engine.Option
-	node             *pgn.Node
-	board            *chess.Board
-	infoChannel      <-chan engine.Info
-	allPvs           map[int]*engine.Pv
-	analysis         GameAnalysis
-	bestMove         float64
+	opts          Opts
+	pgnFileHandle *os.File
+	pgntext       string
+	db            pgn.DB
+	game          *pgn.Game
+	engine        *uci.Engine
+	engineOptions map[string]engine.Option
+	node          *pgn.Node
+	board         *chess.Board
+	infoChannel   <-chan engine.Info
+	allPvs        map[int]*engine.Pv
+	analysis      GameAnalysis
+	bestMove      float64
 }
 
 // NewGameRater creates and returns a pointer to a new GameRater
@@ -47,7 +47,6 @@ func NewGameRater(opts Opts) *GameRater {
 // Run is the main entry point for GameRater
 func (g *GameRater) Run() {
 	g.openPgnFile()
-	g.openOutputFile()
 	g.readPgnFile()
 	g.createNewEmptyDatabase()
 	g.parsePgnText()
@@ -58,6 +57,7 @@ func (g *GameRater) Run() {
 	g.setMPVOption(g.opts.MultiPV)
 	g.extractRootGameNode()
 	g.processAllMoves()
+	g.writeOutputFile()
 }
 
 func (g *GameRater) openPgnFile() {
@@ -69,18 +69,6 @@ func (g *GameRater) openPgnFile() {
 	}
 
 	g.pgnFileHandle = fh
-}
-
-func (g *GameRater) openOutputFile() {
-	if g.opts.OutputFile == "-" {
-		g.outputFileHandle = os.Stdout
-	} else {
-		oh, err := os.Create(g.opts.OutputFile)
-		if err != nil {
-			log.Fatal(err)
-		}
-		g.outputFileHandle = oh
-	}
 }
 
 func (g *GameRater) readPgnFile() {
@@ -347,6 +335,20 @@ func (g *GameRater) clearPvs() {
 	g.allPvs = make(map[int]*engine.Pv)
 }
 
-func (g *GameRater) write(format string, args ...interface{}) {
-	g.outputFileHandle.WriteString(fmt.Sprintf(format, args...))
+func (g *GameRater) writeOutputFile() {
+	j, err := json.MarshalIndent(g.analysis, "", "  ")
+	if err != nil {
+		log.Fatal(err)
+	}
+	var oh *os.File
+	if g.opts.OutputFile == "-" {
+		oh = os.Stdout
+	} else {
+		oh, err = os.Create(g.opts.OutputFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	defer oh.Close()
+	oh.Write(j)
 }
