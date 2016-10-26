@@ -4,7 +4,7 @@ import "encoding/json"
 
 // ScoredMove is a single move, and its score, according to the engine.
 type ScoredMove struct {
-	Rank  int     `json:"rank"`
+	Rank  int     `json:"rank,omitempty"`
 	Move  string  `json:"move"`
 	Score float64 `json:"score"`
 }

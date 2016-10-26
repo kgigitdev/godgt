@@ -226,22 +226,7 @@ func (g *GameRater) processEngineResults() {
 	if nextNode == nil {
 		return
 	}
-	move := nextNode.Move
-	actualSan := move.San(g.board)
 	ma := MoveAnalysis{}
-	fen := g.board.Fen()
-	if g.board.SideToMove == 0 {
-		ma.Mover = "white"
-	} else {
-		ma.Mover = "black"
-	}
-	ma.MoveNumber = g.board.MoveNr
-	ma.Fen = fen
-
-	actualMove := ScoredMove{
-		Move: actualSan,
-	}
-	ma.ActualMove = actualMove
 
 	// Since g.allPvs is actually a map, the ranks have no
 	// guaranteed order. However, it's nice to have them properly
@@ -270,14 +255,45 @@ func (g *GameRater) processEngineResults() {
 		fscore := float64(score) / 100.0
 
 		sm := ScoredMove{
-			Rank:  rank,
+			// Add 1 so the best move has rank 1. Also to
+			// prevent rank 0 from being reaped by the
+			// "omitempty" JSON directive.
+			Rank:  rank + 1,
 			Move:  san,
 			Score: fscore,
 		}
 		ma.BestMoves = append(ma.BestMoves, sm)
 		moveToScore[san] = fscore
 	}
+
+	// Now add the actual move played.
+	move := nextNode.Move
+	actualSan := move.San(g.board)
+	fen := g.board.Fen()
+	if g.board.SideToMove == 0 {
+		ma.Mover = "white"
+	} else {
+		ma.Mover = "black"
+	}
+	ma.MoveNumber = g.board.MoveNr
+	ma.Fen = fen
+
+	actualScore, ok := moveToScore[actualSan]
+	if !ok {
+		actualScore = g.computeExplicitScore(nextNode)
+	}
+
+	actualMove := ScoredMove{
+		Move:  actualSan,
+		Score: actualScore,
+	}
+	ma.ActualMove = actualMove
+
 	g.write(ma.String())
+}
+
+func (g *GameRater) computeExplicitScore(node *pgn.Node) float64 {
+	return -1.0
 }
 
 func (g *GameRater) updateGameState() {
