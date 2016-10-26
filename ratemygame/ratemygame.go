@@ -293,7 +293,27 @@ func (g *GameRater) processEngineResults() {
 	}
 	ma.ActualMove = actualMove
 
-	g.write(ma.String())
+	g.analysis = append(g.analysis, ma)
+	g.printMoveSummary(ma)
+}
+
+func (g *GameRater) printMoveSummary(ma MoveAnalysis) {
+	actualMove := ma.ActualMove
+	bestMove := ma.BestMoves[0]
+	var score string
+	if bestMove.Move == actualMove.Move {
+		score = fmt.Sprintf("%6.2f", actualMove.Score)
+	} else {
+		score = fmt.Sprintf("%6.2f (%-6s = %6.2f)", actualMove.Score,
+			bestMove.Move, bestMove.Score)
+	}
+	if ma.Mover == "white" {
+		log.Printf("%2d. %-6s %-6s %s\n", ma.MoveNumber,
+			ma.ActualMove.Move, "", score)
+	} else {
+		log.Printf("%2d. %-6s %-6s %s\n", ma.MoveNumber,
+			"...", ma.ActualMove.Move, score)
+	}
 }
 
 func (g *GameRater) computeExplicitScore(node *pgn.Node) float64 {
