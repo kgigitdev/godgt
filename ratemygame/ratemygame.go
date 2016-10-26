@@ -154,13 +154,16 @@ func (g *GameRater) processAllMoves() {
 		// processOneMove(), we can't. This is because we also call
 		// processOneMove() from another place, when scoring very
 		// bad moves.
-		g.extractCurrentBoard()
-		g.processOneMove()
-		g.processEngineResults()
 		if g.gameFinished() {
 			break
 		}
+		g.extractCurrentBoard()
+		g.processOneMove()
+		g.processEngineResults()
 		g.updateGameState()
+		if g.gameFinished() {
+			break
+		}
 	}
 }
 
@@ -324,7 +327,9 @@ func (g *GameRater) computeExplicitScore(node *pgn.Node) float64 {
 }
 
 func (g *GameRater) updateGameState() {
-	g.node = g.node.Next
+	if g.node != nil {
+		g.node = g.node.Next
+	}
 }
 
 func (g *GameRater) gameFinished() bool {
