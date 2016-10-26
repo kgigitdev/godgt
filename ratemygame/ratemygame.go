@@ -356,4 +356,5 @@ func (g *GameRater) writeOutputFile() {
 	}
 	defer oh.Close()
 	oh.Write(j)
+	oh.WriteString("\n")
 }
