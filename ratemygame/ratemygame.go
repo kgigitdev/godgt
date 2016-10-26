@@ -32,6 +32,7 @@ type GameRater struct {
 	infoChannel      <-chan engine.Info
 	allPvs           map[int]*engine.Pv
 	analysis         GameAnalysis
+	bestMove         float64
 }
 
 // NewGameRater creates and returns a pointer to a new GameRater
@@ -54,7 +55,7 @@ func (g *GameRater) Run() {
 	defer g.engine.Quit()
 	g.readEngineOptions()
 	g.maybePrintEngineOptions()
-	g.setMPVOption()
+	g.setMPVOption(g.opts.MultiPV)
 	g.extractRootGameNode()
 	g.processAllMoves()
 }
@@ -138,14 +139,14 @@ func (g *GameRater) maybePrintEngineOptions() {
 	w.Flush()
 }
 
-func (g *GameRater) setMPVOption() {
-	mpv, ok := g.engineOptions["MultiPV"]
+func (g *GameRater) setMPVOption(mpv int) {
+	mpvOption, ok := g.engineOptions["MultiPV"]
 	if !ok {
 		log.Fatal("Can't set MultiPV mode")
 	}
 	// Even though it's an integer field, it takes a string;
 	// internally, it performs an Atoi() on it
-	mpv.Set(fmt.Sprintf("%d", g.opts.MultiPV))
+	mpvOption.Set(fmt.Sprintf("%d", mpv))
 }
 
 func (g *GameRater) extractRootGameNode() {
@@ -160,21 +161,26 @@ func (g *GameRater) extractRootGameNode() {
 
 func (g *GameRater) processAllMoves() {
 	for {
+		// Note that even though it might appear that it's would be
+		// possible to move some of the method calls into
+		// processOneMove(), we can't. This is because we also call
+		// processOneMove() from another place, when scoring very
+		// bad moves.
+		g.extractCurrentBoard()
 		g.processOneMove()
+		g.processEngineResults()
 		if g.gameFinished() {
 			break
 		}
+		g.updateGameState()
 	}
 }
 
 func (g *GameRater) processOneMove() {
-	g.extractCurrentBoard()
 	g.sendPositionToEngine()
 	g.startSearch()
 	g.clearPvs()
 	g.processAllEngineMessages()
-	g.processEngineResults()
-	g.updateGameState()
 }
 
 func (g *GameRater) extractCurrentBoard() {
@@ -203,11 +209,9 @@ func (g *GameRater) processOneEngineMessage(info engine.Info) {
 	}
 	if _, ok := info.BestMove(); ok {
 		// This indicates that the thinking time is over. We
-		// actually don't care about the best move; it is
-		// duplicated in the MultiPV analysis. We also don't
-		// need to indicate that we need to stop processing
-		// messages from the engine; the engine will close
-		// the channel.
+		// don't need to indicate that we need to stop
+		// processing messages from the engine; the engine
+		// will close the channel.
 		return
 	} else if pv := info.Pv(); pv != nil {
 		g.processOnePV(pv)
@@ -293,7 +297,22 @@ func (g *GameRater) processEngineResults() {
 }
 
 func (g *GameRater) computeExplicitScore(node *pgn.Node) float64 {
-	return -1.0
+	// We need to process a bad move explicitly. The way we do
+	// this is to feed the engine the position AFTER the move and
+	// look at the score for the very best move by the *opponent*.
+	// Since we only want the very best score, we can set MultiPV
+	// to 1 for this.
+	log.Println("Computing explicit score")
+	g.setMPVOption(1)
+	g.board = node.Board
+	g.processOneMove()
+	g.setMPVOption(g.opts.MultiPV)
+	bestPv, ok := g.allPvs[0]
+	if !ok {
+		// What to do here?
+		return -999.0
+	}
+	return float64(bestPv.Score) / 100.0
 }
 
 func (g *GameRater) updateGameState() {
