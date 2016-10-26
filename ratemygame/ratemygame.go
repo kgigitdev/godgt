@@ -30,6 +30,7 @@ type GameRater struct {
 	board            *chess.Board
 	infoChannel      <-chan engine.Info
 	allPvs           map[int]*engine.Pv
+	analysis         GameAnalysis
 }
 
 // NewGameRater creates and returns a pointer to a new GameRater
@@ -167,8 +168,6 @@ func (g *GameRater) processAllMoves() {
 
 func (g *GameRater) processOneMove() {
 	g.extractCurrentBoard()
-	g.writeCurrentFen()
-	g.writeActualMovePlayed()
 	g.sendPositionToEngine()
 	g.startSearch()
 	g.clearPvs()
@@ -179,20 +178,6 @@ func (g *GameRater) processOneMove() {
 
 func (g *GameRater) extractCurrentBoard() {
 	g.board = g.node.Board
-}
-
-func (g *GameRater) writeCurrentFen() {
-	fen := g.board.Fen()
-	g.write("FEN:    %s\n", fen)
-}
-
-func (g *GameRater) writeActualMovePlayed() {
-	nextNode := g.node.Next
-	if nextNode != nil {
-		move := nextNode.Move
-		actualSan := move.San(g.board)
-		g.write("PLAYED: %s\n", actualSan)
-	}
 }
 
 func (g *GameRater) sendPositionToEngine() {
@@ -236,7 +221,21 @@ func (g *GameRater) processOnePV(pv *engine.Pv) {
 }
 
 func (g *GameRater) processEngineResults() {
-	g.write("ANALYSIS:\n")
+	nextNode := g.node.Next
+	if nextNode == nil {
+		return
+	}
+	move := nextNode.Move
+	actualSan := move.San(g.board)
+	ma := MoveAnalysis{}
+	fen := g.board.Fen()
+	ma.Fen = fen
+
+	actualMove := ScoredMove{
+		San: actualSan,
+	}
+	ma.Actual = actualMove
+
 	for rank, pv := range g.allPvs {
 		if pv == nil {
 			continue
@@ -248,11 +247,14 @@ func (g *GameRater) processEngineResults() {
 		san := move.San(g.board)
 		score := pv.Score
 
-		s := fmt.Sprintf("%d %7s %3d\n",
-			rank, san, score)
-		g.write(s)
+		sm := ScoredMove{
+			San:   san,
+			Rank:  rank,
+			Score: float64(score) / 100.0,
+		}
+		ma.BestMoves = append(ma.BestMoves, sm)
 	}
-	g.write("\n")
+	g.write(ma.String())
 }
 
 func (g *GameRater) updateGameState() {
