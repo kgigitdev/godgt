@@ -4,18 +4,18 @@ import "encoding/json"
 
 // ScoredMove is a single move, and its score, according to the engine.
 type ScoredMove struct {
-	San   string  `json:"san"`
 	Rank  int     `json:"rank"`
+	Move  string  `json:"move"`
 	Score float64 `json:"score"`
 }
 
 // MoveAnalysis is the analysis of a single move
 type MoveAnalysis struct {
-	Move      int    `json:"move"`
-	Mover     string `json:"mover"`
-	BestMoves []ScoredMove
-	Actual    ScoredMove
-	Fen       string `json:"fen"`
+	MoveNumber int          `json:"move_number"`
+	Mover      string       `json:"mover"`
+	Fen        string       `json:"fen"`
+	BestMoves  []ScoredMove `json:"best_moves"`
+	ActualMove ScoredMove   `json:"actual_move"`
 }
 
 func (ma MoveAnalysis) String() string {

@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"sort"
 	"text/tabwriter"
 	"time"
 
@@ -229,30 +230,52 @@ func (g *GameRater) processEngineResults() {
 	actualSan := move.San(g.board)
 	ma := MoveAnalysis{}
 	fen := g.board.Fen()
+	if g.board.SideToMove == 0 {
+		ma.Mover = "white"
+	} else {
+		ma.Mover = "black"
+	}
+	ma.MoveNumber = g.board.MoveNr
 	ma.Fen = fen
 
 	actualMove := ScoredMove{
-		San: actualSan,
+		Move: actualSan,
 	}
-	ma.Actual = actualMove
+	ma.ActualMove = actualMove
 
-	for rank, pv := range g.allPvs {
-		if pv == nil {
+	// Since g.allPvs is actually a map, the ranks have no
+	// guaranteed order. However, it's nice to have them properly
+	// ordered in the JSON output, which is a list. We also need
+	// to guard against the possibility that the actual played
+	// move is so bad that it doesn't feature in any of the top
+	// moves from the engine, in which case we need to do
+	// something special to score it.
+	var ranks []int
+	moveToScore := make(map[string]float64)
+	for rank := range g.allPvs {
+		ranks = append(ranks, rank)
+	}
+	sort.Ints(ranks)
+	for rank := range ranks {
+		pv, ok := g.allPvs[rank]
+		if !ok || pv == nil {
 			continue
 		}
 		if len(pv.Moves) == 0 {
 			continue
 		}
-		move := pv.Moves[0]
-		san := move.San(g.board)
+		engineMove := pv.Moves[0]
+		san := engineMove.San(g.board)
 		score := pv.Score
+		fscore := float64(score) / 100.0
 
 		sm := ScoredMove{
-			San:   san,
 			Rank:  rank,
-			Score: float64(score) / 100.0,
+			Move:  san,
+			Score: fscore,
 		}
 		ma.BestMoves = append(ma.BestMoves, sm)
+		moveToScore[san] = fscore
 	}
 	g.write(ma.String())
 }
