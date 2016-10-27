@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/jung-kurt/gofpdf"
+	"github.com/kgigitdev/godgt"
 )
 
 func main() {
@@ -123,17 +124,42 @@ func main() {
 				marker = "*"
 				moveSeen = true
 			}
-			text += fmt.Sprintf("%-4s %.2f%s\n", bm.Move,
+			text += fmt.Sprintf("%-7s%5.2f%s\n", bm.Move,
 				bm.Score, marker)
 		}
 		if !moveSeen {
-			text += fmt.Sprintf("\n%-4s %.2f*\n",
+			text += fmt.Sprintf("\n%-4s %5.2f*\n",
 				ma.ActualMove.Move, ma.ActualMove.Score)
 		}
 		// html := pdf.HTMLBasicNew()
 		// html.Write(4.0, text)
 		pdf.MultiCell(columnWidth, 4.0, text,
 			borderStr, alignStr, fill)
+
+		// For white, the penalty is the best move score less
+		// the played score. For black, the penalty is the
+		// played score less the best move score. This is
+		// because all scores are seen from White's point of
+		// view, so higher numbers are better for white and worse
+		// for black, regardless of who is playing.
+		penalty := 0.0
+		if ma.Mover == "white" {
+			penalty = ma.BestMoves[0].Score - ma.ActualMove.Score
+		} else {
+			penalty = ma.ActualMove.Score - ma.BestMoves[0].Score
+		}
+
+		penaltyMessage := fmt.Sprintf("Penalty:  %5.2f\n", penalty)
+		pdf.MoveTo(xoffset, yoffset+60.0)
+		pdf.SetFont("Courier", "B", 12.0)
+		setTextColor(pdf, penalty)
+		pdf.MultiCell(columnWidth, 4.0, penaltyMessage, borderStr, alignStr, fill)
+		pdf.SetFont("Courier", "B", 12.0)
+		pdf.SetTextColor(0x00, 0x00, 0x00)
+
+		// Draw board
+		drawBoard(pdf, ma.FenAfter, xoffset, yoffset)
+
 		// pdf.Write(html)
 		// pdf.Cell(columnWidth, rowHeight, text)
 		colCount++
@@ -149,5 +175,71 @@ func main() {
 	err = pdf.OutputFileAndClose(outfile)
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+func setTextColor(pdf *gofpdf.Fpdf, penalty float64) {
+	if penalty == 0.0 {
+		pdf.SetTextColor(0x00, 0x80, 0x00)
+	} else if penalty < 0.2 {
+		pdf.SetTextColor(0x20, 0x70, 0x00)
+	} else if penalty < 0.4 {
+		pdf.SetTextColor(0x40, 0x60, 0x00)
+	} else if penalty < 0.6 {
+		pdf.SetTextColor(0x60, 0x50, 0x00)
+	} else if penalty < 0.8 {
+		pdf.SetTextColor(0x80, 0x40, 0x00)
+	} else if penalty < 1.0 {
+		pdf.SetTextColor(0xa0, 0x30, 0x00)
+	} else if penalty < 1.2 {
+		pdf.SetTextColor(0xc0, 0x20, 0x00)
+	} else if penalty < 1.4 {
+		pdf.SetTextColor(0xe0, 0x10, 0x00)
+	} else {
+		pdf.SetTextColor(0xff, 0x00, 0x00)
+	}
+
+}
+
+func drawBoard(pdf *gofpdf.Fpdf, fen string, xbase float64, ybase float64) {
+	fs := godgt.FS(false)
+	size := 128
+	flow := false
+
+	// output := image.NewRGBA(image.Rect(0, 0, size*8, size*8))
+	// white := color.RGBA{255, 255, 255, 255}
+	// draw.Draw(output, output.Bounds(), &image.Uniform{white},
+	// image.ZP, draw.Src)
+
+	imageOptions := gofpdf.ImageOptions{
+		ImageType: "PNG",
+	}
+
+	simpleRows := godgt.SimpleBoardFromFen(fen)
+	for iRow, simpleRow := range simpleRows {
+		for iCol, fenChar := range simpleRow {
+			fenString := string(fenChar)
+			imagePath := godgt.GetImagePath(fenString, iCol, iRow, size)
+			if imagePath == "" {
+				continue
+			}
+
+			file, err := fs.Open(imagePath)
+			if err != nil {
+				log.Fatal("Error opening " + imagePath +
+					": " + err.Error())
+			}
+
+			pdf.RegisterImageOptionsReader(imagePath, imageOptions, file)
+
+			// Magic numbers determined by trial and error;
+			// need to work out how to compute these properly.
+			x := xbase + 35.0 + float64(iCol)*5.75
+			y := ybase + float64(iRow)*5.75
+			// w := 16.0
+			// h := 16.0
+			pdf.MoveTo(x, y)
+			pdf.ImageOptions(imagePath, x, y, -600, -600, flow, imageOptions, 0, "")
+		}
 	}
 }

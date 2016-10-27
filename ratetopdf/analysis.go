@@ -13,7 +13,8 @@ type ScoredMove struct {
 type MoveAnalysis struct {
 	MoveNumber int          `json:"move_number"`
 	Mover      string       `json:"mover"`
-	Fen        string       `json:"fen"`
+	FenBefore  string       `json:"fen_before"`
+	FenAfter   string       `json:"fen_after"`
 	BestMoves  []ScoredMove `json:"best_moves"`
 	ActualMove ScoredMove   `json:"actual_move"`
 }
