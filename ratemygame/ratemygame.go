@@ -298,14 +298,16 @@ func (g *GameRater) processEngineResults() {
 	// Now add the actual move played.
 	move := nextNode.Move
 	actualSan := move.San(g.board)
-	fen := g.board.Fen()
+	fenBefore := g.board.Fen()
+	fenAfter := nextNode.Board.Fen()
 	if g.board.SideToMove == 0 {
 		ma.Mover = "white"
 	} else {
 		ma.Mover = "black"
 	}
 	ma.MoveNumber = g.board.MoveNr
-	ma.Fen = fen
+	ma.FenBefore = fenBefore
+	ma.FenAfter = fenAfter
 
 	actualScore, ok := moveToScore[actualSan]
 	if !ok {
