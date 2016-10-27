@@ -4,13 +4,15 @@ package main
 type Opts struct {
 	Engine string `long:"engine" short:"e" description:"UCI Engine to run" default:"stockfish"`
 
-	TimePerOpeningMove int `long:"opening-time" short:"t" description:"Time, in seconds, to allocate to each move analysis in the opening."`
+	OpeningTimePerMove int `long:"opening-time" short:"t" description:"Time, in seconds, to allocate to each move analysis in the opening."`
+
+	OpeningDepthPerMove int `long:"opening-depth" short:"d" description:"Time, in seconds, to allocate to each move analysis in the opening."`
 
 	OpeningLength int `long:"opening-length" short:"l" description:"Length of the opening, in moves" default:"10"`
 
 	TimePerMove int `long:"time-per-move" short:"T" description:"Time, in seconds, to allocate to each move analysis." default:"30"`
 
-	DepthPerMove int `long:"depth-per-move" short:"d" description:"Depth to analyse each move (overrides time)"`
+	DepthPerMove int `long:"depth-per-move" short:"D" description:"Depth to analyse each move (overrides time)"`
 
 	PgnFile string `long:"pgn" short:"p" description:"PGN file to analyse." required:"true"`
 

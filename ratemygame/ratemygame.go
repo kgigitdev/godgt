@@ -33,6 +33,7 @@ type GameRater struct {
 	allPvs        map[int]*engine.Pv
 	analysis      GameAnalysis
 	bestMove      float64
+	searchStart   time.Time
 }
 
 // NewGameRater creates and returns a pointer to a new GameRater
@@ -183,9 +184,39 @@ func (g *GameRater) sendPositionToEngine() {
 }
 
 func (g *GameRater) startSearch() {
-	var analysisTime = g.opts.TimePerMove
-	g.infoChannel = g.engine.SearchTime(time.Second *
-		time.Duration(analysisTime))
+	var depthPerMove int
+	var timePerMove int
+
+	depthPerMove = g.opts.DepthPerMove
+	timePerMove = g.opts.TimePerMove
+
+	if g.board.MoveNr < g.opts.OpeningLength {
+		// We're still in the opening, so maybe use different
+		// search values.
+		g.debug("In opening")
+		if g.opts.OpeningDepthPerMove > 0 || g.opts.OpeningTimePerMove > 0 {
+			depthPerMove = g.opts.OpeningDepthPerMove
+			timePerMove = g.opts.OpeningTimePerMove
+		}
+	} else {
+		g.debug("Out of opening")
+	}
+
+	// Sanity check: if both are zero, set the time to something
+	// not entirely insane.
+	if depthPerMove == 0 && timePerMove == 0 {
+		timePerMove = 5
+	}
+
+	g.searchStart = time.Now()
+	if depthPerMove > 0 {
+		g.debug("Searching to a depth of %d", depthPerMove)
+		g.infoChannel = g.engine.SearchDepth(depthPerMove)
+	} else {
+		g.debug("Searching for %d seconds", timePerMove)
+		g.infoChannel = g.engine.SearchTime(time.Second *
+			time.Duration(timePerMove))
+	}
 }
 
 func (g *GameRater) processAllEngineMessages() {
@@ -203,6 +234,9 @@ func (g *GameRater) processOneEngineMessage(info engine.Info) {
 		// don't need to indicate that we need to stop
 		// processing messages from the engine; the engine
 		// will close the channel.
+		searchEnd := time.Now()
+		g.debug("Move analysis took %.2f seconds.",
+			searchEnd.Sub(g.searchStart).Seconds())
 		return
 	} else if pv := info.Pv(); pv != nil {
 		g.processOnePV(pv)
@@ -357,4 +391,11 @@ func (g *GameRater) writeOutputFile() {
 	defer oh.Close()
 	oh.Write(j)
 	oh.WriteString("\n")
+}
+
+func (g *GameRater) debug(format string, args ...interface{}) {
+	format = format + "\n"
+	if g.opts.Verbose {
+		log.Printf(format, args...)
+	}
 }
