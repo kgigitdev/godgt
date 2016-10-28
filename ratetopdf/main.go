@@ -169,7 +169,7 @@ func main() {
 			blunder = ma.ActualMove.Score - ma.BestMoves[0].Score
 		}
 
-		blunderMessage := fmt.Sprintf("Blunder:  %5.2f\n", blunder)
+		blunderMessage := fmt.Sprintf("BlunderScore:  %5.2f\n", blunder)
 		pdf.MoveTo(xoffset, yoffset+60.0)
 		pdf.SetFont("Courier", "B", 12.0)
 		setTextColor(pdf, blunder)
