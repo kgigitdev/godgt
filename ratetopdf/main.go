@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"sort"
 
 	"github.com/jung-kurt/gofpdf"
 	"github.com/kgigitdev/godgt"
@@ -100,6 +101,31 @@ func main() {
 	rowCount := 0
 	colCount := 0
 
+	var whiteBlunders sort.Float64Slice
+	var blackBlunders sort.Float64Slice
+
+	for _, ma := range ga {
+		if ma.Mover == "white" {
+			whiteBlunders = append(whiteBlunders,
+				ma.BlunderScore())
+		} else {
+			blackBlunders = append(blackBlunders,
+				ma.BlunderScore())
+		}
+	}
+
+	log.Print(whiteBlunders)
+	log.Print(blackBlunders)
+
+	sort.Sort(whiteBlunders)
+	sort.Sort(blackBlunders)
+
+	log.Printf("Worst white blunder: %.2f\n", whiteBlunders[0])
+	log.Printf("Median white blunder: %.2f\n", getMedian(whiteBlunders))
+	log.Printf("Worst black blunder: %.2f\n", blackBlunders[0])
+	log.Printf("Median black blunder: %.2f\n", getMedian(blackBlunders))
+
+	// Main drawing loop
 	for _, ma := range ga {
 		xoffset := (outerMarginWidth +
 			innerMarginWidth*(float64(colCount)) +
@@ -136,24 +162,18 @@ func main() {
 		pdf.MultiCell(columnWidth, 4.0, text,
 			borderStr, alignStr, fill)
 
-		// For white, the penalty is the best move score less
-		// the played score. For black, the penalty is the
-		// played score less the best move score. This is
-		// because all scores are seen from White's point of
-		// view, so higher numbers are better for white and worse
-		// for black, regardless of who is playing.
-		penalty := 0.0
+		blunder := 0.0
 		if ma.Mover == "white" {
-			penalty = ma.BestMoves[0].Score - ma.ActualMove.Score
+			blunder = ma.BestMoves[0].Score - ma.ActualMove.Score
 		} else {
-			penalty = ma.ActualMove.Score - ma.BestMoves[0].Score
+			blunder = ma.ActualMove.Score - ma.BestMoves[0].Score
 		}
 
-		penaltyMessage := fmt.Sprintf("Penalty:  %5.2f\n", penalty)
+		blunderMessage := fmt.Sprintf("Blunder:  %5.2f\n", blunder)
 		pdf.MoveTo(xoffset, yoffset+60.0)
 		pdf.SetFont("Courier", "B", 12.0)
-		setTextColor(pdf, penalty)
-		pdf.MultiCell(columnWidth, 4.0, penaltyMessage, borderStr, alignStr, fill)
+		setTextColor(pdf, blunder)
+		pdf.MultiCell(columnWidth, 4.0, blunderMessage, borderStr, alignStr, fill)
 		pdf.SetFont("Courier", "B", 12.0)
 		pdf.SetTextColor(0x00, 0x00, 0x00)
 
@@ -178,22 +198,22 @@ func main() {
 	}
 }
 
-func setTextColor(pdf *gofpdf.Fpdf, penalty float64) {
-	if penalty == 0.0 {
+func setTextColor(pdf *gofpdf.Fpdf, blunder float64) {
+	if blunder == 0.0 {
 		pdf.SetTextColor(0x00, 0x80, 0x00)
-	} else if penalty < 0.2 {
+	} else if blunder < 0.2 {
 		pdf.SetTextColor(0x20, 0x70, 0x00)
-	} else if penalty < 0.4 {
+	} else if blunder < 0.4 {
 		pdf.SetTextColor(0x40, 0x60, 0x00)
-	} else if penalty < 0.6 {
+	} else if blunder < 0.6 {
 		pdf.SetTextColor(0x60, 0x50, 0x00)
-	} else if penalty < 0.8 {
+	} else if blunder < 0.8 {
 		pdf.SetTextColor(0x80, 0x40, 0x00)
-	} else if penalty < 1.0 {
+	} else if blunder < 1.0 {
 		pdf.SetTextColor(0xa0, 0x30, 0x00)
-	} else if penalty < 1.2 {
+	} else if blunder < 1.2 {
 		pdf.SetTextColor(0xc0, 0x20, 0x00)
-	} else if penalty < 1.4 {
+	} else if blunder < 1.4 {
 		pdf.SetTextColor(0xe0, 0x10, 0x00)
 	} else {
 		pdf.SetTextColor(0xff, 0x00, 0x00)
@@ -242,4 +262,24 @@ func drawBoard(pdf *gofpdf.Fpdf, fen string, xbase float64, ybase float64) {
 			pdf.ImageOptions(imagePath, x, y, -600, -600, flow, imageOptions, 0, "")
 		}
 	}
+}
+
+func getMedian(values sort.Float64Slice) float64 {
+	numEntries := len(values)
+	// FIXME: Deal with empty slices, etc.
+	var median float64
+	if numEntries%2 == 1 {
+		// If it's an odd length, subtract one, halve it, and
+		// use half+1 as the index.
+		idx := ((numEntries - 1) / 2) + 1
+		median = values[idx]
+	} else {
+		// If it's an even length, halve it, take the indices
+		// at the half and half+1, and return the average of
+		// the values at those indices.
+		idx1 := numEntries / 2
+		idx2 := idx1 + 1
+		median = (values[idx1] + values[idx2]) / 2.0
+	}
+	return median
 }
