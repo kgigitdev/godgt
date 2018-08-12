@@ -1,5 +1,15 @@
 # godgt
 
+## Deprecated
+
+This project has now been deprecated in favour of
+[dogmatic](https://github.com/kgigitdev/dogmatic), which does a much
+better job all round. This project will remain here, as it also
+contains useful utilities that will probably eventually be split out
+into separate projects.
+
+## About
+
 An experimental utility for interacting with DGT's Electronic Chess
 Boards, written in Go. The development platform is Linux; on other
 platforms, YMMV.
